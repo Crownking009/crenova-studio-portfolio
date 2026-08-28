@@ -9,4 +9,10 @@ if (!$item) redirect('/admin/' . $section);
 <body class="admin-login"><a class="brand" href="<?= url('admin/' . $section) ?>"><img src="<?= url('assets/images/crenova-mark.svg') ?>" alt=""><span>CRENOVA<br><em>STUDIO</em></span></a>
 <form class="login-card glass" method="post" enctype="multipart/form-data"><span class="eyebrow">Studio management</span><h1>Edit <i>item.</i></h1><input type="hidden" name="action" value="admin_save"><input type="hidden" name="resource" value="<?= e($section) ?>"><input type="hidden" name="id" value="<?= e($item['id']) ?>"><?= csrf_field() ?>
 <?php foreach ($definitions[$section] as $name => $label): ?><label><?= e($label) ?><?php if (in_array($name, ['description','content','excerpt','quote','meta_description','address','items'], true)): ?><textarea name="<?= e($name) ?>" rows="3"><?= e($item[$name] ?? '') ?></textarea><?php else: ?><input name="<?= e($name) ?>" value="<?= e($item[$name] ?? '') ?>"><?php endif; ?></label><?php endforeach; ?>
-<?php if (in_array($section, ['projects','products'], true)): ?><label>Replace image<input type="file" name="image" accept="image/jpeg,image/png,image/webp"></label><?php endif; ?><button class="button primary">Save changes <b>↗</b></button></form></body></html>
+<?php if (!empty($item['image'])): ?>
+	<label>Current image
+		<div class="image-preview"><img src="<?= url($item['image']) ?>" alt="<?= e($item['title'] ?? '') ?>"></div>
+	</label>
+	<label><input type="checkbox" name="remove_image" value="1"> Remove image</label>
+<?php endif; ?>
+<?php if (in_array($section, ['projects','products','blogs'], true)): ?><label>Replace image<input type="file" name="image" accept="image/jpeg,image/png,image/webp"></label><?php endif; ?><button class="button primary">Save changes <b>↗</b></button></form></body></html>

@@ -77,11 +77,23 @@ class AdminResource {
         return move_uploaded_file($file['tmp_name'], __DIR__ . '/../uploads/' . $name) ? 'uploads/' . $name : null;
     }
     public static function save(string $table, array $input, array $files, int $id): void {
-        $allowed=['projects'=>['title','slug','category','client','description','tools','results','featured'],'products'=>['name','slug','price','category','description','availability'],'services'=>['title','icon','description'],'blogs'=>['title','slug','category','excerpt','content','meta_title','meta_description'],'testimonials'=>['name','role','quote','rating'],'clients'=>['name','website'],'orders'=>['customer_name','phone','address','items','total','status']];
+        $allowed=['projects'=>['title','slug','category','client','description','tools','results','featured'],'products'=>['name','slug','price','category','description','availability'],'services'=>['title','icon','description'],'blogs'=>['title','slug','category','excerpt','content','meta_title','meta_description','image'],'testimonials'=>['name','role','quote','rating'],'clients'=>['name','website'],'orders'=>['customer_name','phone','address','items','total','status']];
         if (!isset($allowed[$table])) return;
         $pdo = db(); if (!$pdo) return;
         $data=[]; foreach ($allowed[$table] as $field) $data[$field] = clean($input[$field] ?? '');
-        if (in_array($table, ['projects','products'], true) && isset($files['image'])) { $mainImage = self::uploadImage($files['image']); if ($mainImage) $data['image'] = $mainImage; }
+        if (in_array($table, ['projects','products','blogs'], true) && isset($files['image'])) { $mainImage = self::uploadImage($files['image']); if ($mainImage) $data['image'] = $mainImage; }
+        // If requested, remove existing image for blogs
+        if ($table === 'blogs' && !empty($input['remove_image']) && $id) {
+            try {
+                $fetch = $pdo->prepare('SELECT image FROM blogs WHERE id=?'); $fetch->execute([$id]); $img = $fetch->fetch();
+                if ($img && !empty($img['image'])) {
+                    $file = __DIR__ . '/../' . ltrim((string)$img['image'], '/');
+                    if (is_file($file) && str_starts_with(realpath($file) ?: '', realpath(__DIR__ . '/../uploads') ?: '')) unlink($file);
+                }
+            } catch (Throwable) {}
+            $data['image'] = '';
+        }
+
         $fields = array_keys($data);
         if ($id) { $set=implode(',',array_map(fn($field)=>"`$field`=?",$fields)); $stmt=$pdo->prepare("UPDATE `$table` SET $set WHERE id=?"); $stmt->execute([...array_values($data),$id]); $recordId=$id; }
         else { $cols='`'.implode('`,`',$fields).'`'; $marks=implode(',',array_fill(0,count($fields),'?')); $stmt=$pdo->prepare("INSERT INTO `$table` ($cols) VALUES ($marks)"); $stmt->execute(array_values($data)); $recordId=(int)$pdo->lastInsertId(); }
@@ -94,5 +106,14 @@ class AdminResource {
             $image->execute([$recordId,$path,clean($input['title'] ?? 'Project image'),$sort++]);
         }
     }
-    public static function delete(string $table,int $id):void{$allowed=['projects','products','services','blogs','testimonials','clients','orders','bookings','messages'];$pdo=db();if($pdo&&in_array($table,$allowed,true)){$s=$pdo->prepare("DELETE FROM `$table` WHERE id=?");$s->execute([$id]);}}
+    public static function delete(string $table,int $id):void{
+        $allowed=['projects','products','services','blogs','testimonials','clients','orders','bookings','messages'];
+        $pdo=db();
+        if(!$pdo||!in_array($table,$allowed,true))return;
+        // attempt to unlink associated image for blogs
+        if ($table === 'blogs') {
+            try { $fetch = $pdo->prepare('SELECT image FROM blogs WHERE id=?'); $fetch->execute([$id]); $img = $fetch->fetch(); if ($img && !empty($img['image'])) { $file = __DIR__ . '/../' . ltrim((string)$img['image'], '/'); if (is_file($file) && str_starts_with(realpath($file) ?: '', realpath(__DIR__ . '/../uploads') ?: '')) unlink($file); } } catch (Throwable) {}
+        }
+        $s=$pdo->prepare("DELETE FROM `$table` WHERE id=?");$s->execute([$id]);
+    }
 }
