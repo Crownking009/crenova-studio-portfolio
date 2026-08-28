@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#003333"><title><?= e($pageTitle) ?></title>
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/additions.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/bright-theme.css') ?>">
+  <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/additions.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/animations.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/bright-theme.css') ?>">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"ProfessionalService","name":"Crenova Studio","telephone":"<?= PHONE_NUMBER ?>","url":"<?= url() ?>"}</script>
 </head>
 <body>

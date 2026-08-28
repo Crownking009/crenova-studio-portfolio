@@ -10,7 +10,7 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($method === 'POST') {
     verify_csrf();
     $action = $_POST['action'] ?? '';
-    if (in_array($action, ['login','contact','booking'], true) && !rate_limit($action . ':' . ($_SERVER['REMOTE_ADDR'] ?? 'local'))) {
+    if (in_array($action, ['login','contact','booking','estimate_save'], true) && !rate_limit($action . ':' . ($_SERVER['REMOTE_ADDR'] ?? 'local'))) {
         flash('error', 'Please wait a few minutes before trying again.');
         redirect($action === 'login' ? '/admin/login' : ($action === 'booking' ? '/book' : '/contact'));
     }
@@ -23,6 +23,16 @@ if ($method === 'POST') {
     if ($action === 'contact') {
         Message::create(['name' => clean($_POST['name'] ?? ''), 'email' => clean($_POST['email'] ?? ''), 'phone' => clean($_POST['phone'] ?? ''), 'subject' => clean($_POST['subject'] ?? ''), 'message' => clean($_POST['message'] ?? '')]);
         flash('success', 'Thank you. Your note is with the studio.'); redirect('/contact');
+    }
+
+    if ($action === 'estimate_save') {
+        // Save an estimate as a message so admins can review it in Messages
+        $name = clean($_POST['name'] ?? 'Website estimate');
+        $email = clean($_POST['email'] ?? '');
+        $message = clean($_POST['message'] ?? '');
+        Message::create(['name' => $name, 'email' => $email, 'phone' => '', 'subject' => 'Estimate', 'message' => $message]);
+        // respond with JSON for XHR saves
+        header('Content-Type: application/json'); echo json_encode(['ok' => true]); http_response_code(201); exit;
     }
     if ($action === 'order') {
         Order::create(['customer_name'=>clean($_POST['name'] ?? ''),'phone'=>clean($_POST['phone'] ?? ''),'address'=>clean($_POST['address'] ?? ''),'items'=>clean($_POST['items'] ?? ''),'total'=>(float) ($_POST['total'] ?? 0)]);

@@ -66,7 +66,14 @@ class Message { public static function create(array $data): void { $pdo = db(); 
 class Order { public static function create(array $data): void { $pdo = db(); if (!$pdo) return; $stmt=$pdo->prepare('INSERT INTO orders (customer_name,phone,address,items,total) VALUES (?,?,?,?,?)'); $stmt->execute([$data['customer_name'],$data['phone'],$data['address'],$data['items'],$data['total']]); } }
 class Booking { public static function create(array $d): void { $pdo=db(); if (!$pdo)return; $check=$pdo->prepare("SELECT id FROM bookings WHERE booking_date=? AND booking_time=? AND status IN ('approved','pending')");$check->execute([$d['booking_date'],$d['booking_time']]);if($check->fetch())throw new RuntimeException('That time is unavailable.');$s=$pdo->prepare('INSERT INTO bookings (service,name,email,phone,booking_date,booking_time,notes) VALUES (?,?,?,?,?,?,?)');$s->execute(array_values($d)); } public static function updateStatus(int $id,string $status):void{$pdo=db();if($pdo){$s=$pdo->prepare('UPDATE bookings SET status=? WHERE id=?');$s->execute([$status,$id]);}} }
 class AdminResource {
-    public static function rows(string $table): array { $allowed=['projects','products','services','blogs','testimonials','clients','orders','bookings','messages']; if(!in_array($table,$allowed,true))return[]; $pdo=db(); if(!$pdo)return $table==='projects'?Project::all():($table==='products'?Product::all():[]); try{return $pdo->query('SELECT * FROM `'.$table.'` ORDER BY id DESC')->fetchAll();}catch(Throwable){return[];} }
+    public static function rows(string $table): array { $allowed=['projects','products','services','blogs','testimonials','clients','orders','bookings','messages','estimates']; if(!in_array($table,$allowed,true))return[]; $pdo=db(); if(!$pdo) return $table==='projects'?Project::all():($table==='products'?Product::all():[]);
+        try{
+            if ($table === 'estimates') {
+                $stmt = $pdo->prepare('SELECT * FROM messages WHERE subject = ? ORDER BY id DESC'); $stmt->execute(['Estimate']); return $stmt->fetchAll();
+            }
+            return $pdo->query('SELECT * FROM `'.$table.'` ORDER BY id DESC')->fetchAll();
+        } catch(Throwable){return [];}
+    }
     private static function uploadImage(array $file): ?string {
         if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || ($file['size'] ?? 0) > 5 * 1024 * 1024) return null;
         $extension = strtolower(pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
@@ -108,12 +115,18 @@ class AdminResource {
     }
     public static function delete(string $table,int $id):void{
         $allowed=['projects','products','services','blogs','testimonials','clients','orders','bookings','messages'];
+        // allow deleting estimates (stored as messages) via admin UI
+        $allowed=['projects','products','services','blogs','testimonials','clients','orders','bookings','messages','estimates'];
         $pdo=db();
         if(!$pdo||!in_array($table,$allowed,true))return;
         // attempt to unlink associated image for blogs
         if ($table === 'blogs') {
             try { $fetch = $pdo->prepare('SELECT image FROM blogs WHERE id=?'); $fetch->execute([$id]); $img = $fetch->fetch(); if ($img && !empty($img['image'])) { $file = __DIR__ . '/../' . ltrim((string)$img['image'], '/'); if (is_file($file) && str_starts_with(realpath($file) ?: '', realpath(__DIR__ . '/../uploads') ?: '')) unlink($file); } } catch (Throwable) {}
         }
-        $s=$pdo->prepare("DELETE FROM `$table` WHERE id=?");$s->execute([$id]);
+        if ($table === 'estimates') {
+            $s = $pdo->prepare('DELETE FROM messages WHERE id=? AND subject = ?'); $s->execute([$id, 'Estimate']);
+        } else {
+            $s=$pdo->prepare("DELETE FROM `$table` WHERE id=?");$s->execute([$id]);
+        }
     }
 }
